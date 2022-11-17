@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
-using UnityEditor.UI;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -16,7 +15,7 @@ using UnityEngine.UI;
 // max_health = 100f; // sets the maximum amount of health of the tile 
 
 
-public class TileScript : MonoBehaviour
+public class TileScript : MonoBehaviour,Health
 {
     //just some parameters
     private float tile_Health;
@@ -59,6 +58,5 @@ public class TileScript : MonoBehaviour
         }
     }
 
-   
 
 }

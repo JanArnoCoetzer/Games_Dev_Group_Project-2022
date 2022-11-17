@@ -2,17 +2,21 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
 
-public class JoeControlScript : MonoBehaviour
+public class JoeControlScript : NetworkBehaviour,Health
 {
     enum CharacterStates {Grounded, JumpUp, Falling }
 
     internal Transform myRightHand;
 
-    BombScript joesBomb;
+    PickUP rightHand;
+
+    
+
     CharacterStates joe_state = CharacterStates.Grounded;
     private Vector3 jumping_velocity;
-    float start_jump_velocity = 5;
+    float start_jump_velocity = 10;
 
     private float walking_speed = 2;
     private float running_speed = 4;
@@ -21,6 +25,7 @@ public class JoeControlScript : MonoBehaviour
     Animator joe_animator;
     private float rotation_speed = 180;
     private float gravity = 10;
+    private float dirBoost = 2;
 
     // Start is called before the first frame update
     void Start()
@@ -40,7 +45,7 @@ public class JoeControlScript : MonoBehaviour
         Transform[] allBones = transform.GetComponentsInChildren<Transform>();
         foreach (Transform bone in allBones)
         {
-            if (bone.name == "basic_rig R Hand")
+            if (bone.name == "HoldRight")
             {
                 return bone;
 
@@ -55,6 +60,8 @@ public class JoeControlScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (!IsOwner) return;
+
         current_speed = 0;
 
 
@@ -68,7 +75,9 @@ public class JoeControlScript : MonoBehaviour
                 if (shouldTurnLeft()) turn_left();
                 if (shouldTurnRight()) turn_right();
                 if (shouldPickUp()) pickUp();
-                if (shouldThrowBomb()) throwBomb();
+               /*if (shouldUseRight()) useRight()
+                if (shouldPointGun()) pointGun();
+                if (shouldFireGun()) FireGun();*/
                 if (shouldJump()) jump();
                 transform.position += current_speed * transform.forward * Time.deltaTime;
                 break;
@@ -89,16 +98,19 @@ public class JoeControlScript : MonoBehaviour
 
             case CharacterStates.Falling:
 
-                transform.position += jumping_velocity * Time.deltaTime;
-                jumping_velocity -= gravity*Vector3.up * Time.deltaTime;
-                Debug.DrawLine(transform.position, transform.position - Vector3.down);
+
                 Collider[] colliding_with = Physics.OverlapBox(transform.position, new Vector3(0.5f, 0.1f, 0.5f));
                 foreach (Collider c in colliding_with)
-                {
-                    joe_animator.SetBool("isLanding", true);
-                    joe_animator.SetBool("isJumping", false);
-                    joe_animator.SetBool("isLanding", true);
-                    joe_state = CharacterStates.Grounded;
+                {   
+                    print(c.tag);
+
+                    if (c.tag == "Tile")
+                    {
+                        joe_animator.SetBool("isLanding", true);
+                        joe_animator.SetBool("isJumping", false);
+                   
+                        joe_state = CharacterStates.Grounded;
+                    }
 
                 }
 
@@ -117,36 +129,75 @@ public class JoeControlScript : MonoBehaviour
 
 
     }
-
-    private void throwBomb()
+  /*  private void pointGun()
     {
-        if (joesBomb)
-        {
-            joesBomb.BombThrow(transform.forward, 5);
-            joesBomb = null;
+        if (Input.GetKeyDown(KeyCode.Q) 
+            
+            {
+            joe_animator.setBool("isPointing", true);
         }
-        else
-            print("opps no bomb!!!");
+
+        if (!Input.GetKeyDown(KeyCode.Q); 
+        {
+            joe_animator.SetBool("isPointing", false);
+        }
+
     }
 
-    private bool shouldThrowBomb()
+    private bool shouldPointGun()
+    {
+        return Input.GetKeyDown(KeyCode.Q);
+    }*/
+
+    /*private void FireGun()
+     {
+         throw new NotImplementedException();
+     }
+
+     private bool shouldFireGun()
+     {
+         return Input.GetKeyDown(KeyCode.F);
+     }*/
+
+    private void useRight()
+    {
+        if (rightHand is BombScript )
+        {
+            (rightHand as BombScript).BombThrow(transform.forward, 5);
+            rightHand = null;
+        }
+
+        if (rightHand is GunScript)
+        {
+            (rightHand as GunScript).GunFire();
+        }
+       
+    }
+
+    private bool shouldUseRight()
     {
         return Input.GetKeyDown(KeyCode.T);
     }
 
     private void pickUp()
     {
-    Collider[] allPossibleBombs = Physics.OverlapSphere(transform.position, 1f);
-    foreach (Collider c in allPossibleBombs)
+    Collider[] allPossiblePickUps = Physics.OverlapSphere(transform.position, 1f);
+    foreach (Collider c in allPossiblePickUps)
         {
-            BombScript newBomb = c.transform.GetComponent<BombScript>();
-            if (newBomb)
-            {   if (joesBomb == null)
+            
+            PickUP newItem = c.transform.GetComponent<PickUP>();
+          
+            if (newItem)
+            {   if (rightHand == null)
                 {
-                    joesBomb = newBomb;
-                    joesBomb.IvePickedYou(this);
+
+                    joe_animator.SetBool("isPickingUp", true);
+                    rightHand = newItem;
+                    newItem.latestOwner(this);
                 }
             }
+
+
 
           
         }
@@ -161,9 +212,10 @@ public class JoeControlScript : MonoBehaviour
     private void jump()
     {
         joe_animator.SetBool("isJumping", true);
+        joe_animator.SetBool("isLanding", false);
         joe_state = CharacterStates.JumpUp;
 
-        jumping_velocity =  current_speed* transform.forward +  start_jump_velocity* Vector3.up;
+        jumping_velocity =  dirBoost *current_speed* transform.forward +  start_jump_velocity* Vector3.up;
 
 
     }
@@ -216,5 +268,10 @@ public class JoeControlScript : MonoBehaviour
     private  bool shouldWalkForward()
     {
         return Input.GetKey(KeyCode.W);
+    }
+
+    public void Take_Damage(float damage)
+    {
+        throw new NotImplementedException();
     }
 }
